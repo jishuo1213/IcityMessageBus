@@ -1,0 +1,10 @@
+{
+  "read_count": 500,
+  "hosts": [
+    {
+      "name": "userCenter",
+      "url": "",
+      "toUrl": "http://127.0.0.1:8099"
+    }
+  ]
+}
