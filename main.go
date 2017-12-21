@@ -1,11 +1,20 @@
 package main
 
 import (
+	config2 "IcityMessageBus/config"
+	"IcityMessageBus/cmsp"
+	"log"
 	"IcityMessageBus/requester"
 	"IcityMessageBus/server"
-	config2 "IcityMessageBus/config"
-	"log"
+	"runtime"
 )
+
+func init() {
+	err := cmsp.GetQueue(config2.REQUEST_QUEUE_NAME)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func main() {
 	//err := cmsp.PutMessageIntoQueue("test", []byte("aaaaaaaaaaaaa"))
@@ -21,11 +30,17 @@ func main() {
 	//config.REQUESTER_NUM = 8
 
 	err := config2.InitConfig()
+
+	log.Print("go procs:", config2.Config.MaxProcs)
+	runtime.GOMAXPROCS(config2.Config.MaxProcs)
+
 	if err != nil {
 		log.Print("parse config file failed")
 		return
 	}
 
 	requester.Start()
-	server.Start("127.0.0.1", 1214)
+	server.Start("0.0.0.0", 1214)
+
+	//fmt.Println(utils.DigestMessage([]byte("asdasdafsadf")))
 }

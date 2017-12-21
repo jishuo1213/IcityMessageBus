@@ -10,6 +10,7 @@ type RequestInfo struct {
 	Url     string
 	Headers map[string]string
 	Body    string
+	Id      string
 }
 
 func (requestInfo *RequestInfo) GenerateRequest() (*http.Request, error) {

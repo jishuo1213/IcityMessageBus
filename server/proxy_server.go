@@ -11,6 +11,7 @@ import (
 	"IcityMessageBus/config"
 	"IcityMessageBus/requester"
 	"IcityMessageBus/model"
+	"github.com/google/uuid"
 )
 
 var server *http.Server
@@ -37,30 +38,33 @@ func (parser *RequestParser) ServeHTTP(w http.ResponseWriter, req *http.Request)
 	log.Println(req.Host + req.URL.String())
 	body, err := ioutil.ReadAll(req.Body)
 
+	msgDigest := uuid.New().String()
 	requestInfo := model.RequestInfo{Method: req.Method, Url: req.Host + req.URL.String(),
-		Headers: getRequestHeaders(req), Body: string(body)}
+		Headers: getRequestHeaders(req), Body: string(body), Id: msgDigest}
 	requestBytes, err := utils.EncodeObject(requestInfo)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	//msgDigest, err := utils.DigestMessage(requestBytes)
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	resChannel := make(chan *model.ResponseData)
+	requester.AddResponseChannel(msgDigest, resChannel)
 	err = cmsp.PutMessageIntoQueue(config.REQUEST_QUEUE_NAME, requestBytes)
+	defer func() {
+		requester.RemoveResponseChannel(msgDigest)
+		close(resChannel)
+	}()
 	if err == nil {
-		msgDigest, err := utils.DigestMessage(requestBytes)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		resChannel := make(chan *model.ResponseData)
-		requester.AddResponseChannel(msgDigest, resChannel)
 		res := <-resChannel
 		w.WriteHeader(res.Code)
 		w.Write(res.Body)
-		//responseMap[msgDigest] = w
 	} else {
-		//w.Write()
+		log.Print("put into queue failed")
 	}
-
 }
 
 func Start(host string, port int) {

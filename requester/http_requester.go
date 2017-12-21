@@ -7,16 +7,18 @@ import (
 	"IcityMessageBus/config"
 	"IcityMessageBus/utils"
 	"log"
-	"time"
 	"IcityMessageBus/model"
+	"sync"
 )
 
 var httpClient *http.Client
 var responseChannelMap map[string]chan<- *model.ResponseData
+var lock sync.RWMutex
 
 func init() {
 	httpClient = &http.Client{}
 	responseChannelMap = make(map[string]chan<- *model.ResponseData)
+	lock = sync.RWMutex{}
 }
 
 type ICityRequestBean struct {
@@ -25,6 +27,7 @@ type ICityRequestBean struct {
 }
 
 func Start() {
+	log.Print("read go count:", config.Config.ReadNum)
 	for i := 0; i < config.Config.ReadNum; i++ {
 		ch := make(chan *ICityRequestBean, 10)
 		go startReadMessageLoop(ch)
@@ -35,9 +38,15 @@ func Start() {
 
 func dealChannel(requestChannel <-chan *ICityRequestBean) {
 	for request := range requestChannel {
+		lock.RLock()
+		resChannel, found := responseChannelMap[request.digest]
+		lock.RUnlock()
+		if !found {
+			log.Print("not found:", request.digest)
+			continue
+		}
 		code, body, err := sendHttpRequest(request.request)
 		log.Print(code)
-		resChannel := responseChannelMap[request.digest]
 		if err == nil {
 			responseData := model.ResponseData{Body: body, Code: code}
 			//err = server.SendResponse(request.digest, code, body)
@@ -51,8 +60,8 @@ func dealChannel(requestChannel <-chan *ICityRequestBean) {
 			}
 			//server.SendResponse(request.digest, 200, []byte("failed"))
 		}
-		close(resChannel)
-		delete(responseChannelMap, request.digest)
+		//close(resChannel)
+		//RemoveResponseChannel(request.digest)
 	}
 }
 
@@ -82,10 +91,8 @@ func startReadMessageLoop(requestChannel chan<- *ICityRequestBean) {
 	for {
 		digest, request, err := getRequestFromQueue()
 		if err == nil {
-
+			log.Print("err == nil")
 			requestChannel <- &ICityRequestBean{digest, request}
-		} else {
-			time.Sleep(time.Millisecond)
 		}
 	}
 }
@@ -100,11 +107,12 @@ func getRequestFromQueue() (string, *http.Request, error) {
 	var request model.RequestInfo
 
 	err = utils.DecodeObject(&request, msg)
+	log.Print("read one request id:", request.Id)
 	if err != nil {
 		return "", nil, err
 	}
 
-	msgDigest, err := utils.DigestMessage(msg)
+	msgDigest := request.Id
 
 	if err != nil {
 		return "", nil, err
@@ -119,5 +127,13 @@ func getRequestFromQueue() (string, *http.Request, error) {
 }
 
 func AddResponseChannel(digest string, resChannel chan<- *model.ResponseData) {
+	lock.Lock()
 	responseChannelMap[digest] = resChannel
+	lock.Unlock()
+}
+
+func RemoveResponseChannel(digest string) () {
+	lock.Lock()
+	delete(responseChannelMap, digest)
+	lock.Unlock()
 }

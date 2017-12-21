@@ -14,8 +14,9 @@ const RESPONSE_QUEUE_NAME string = "response"
 var Config MessageBusConfig
 
 type MessageBusConfig struct {
-	ReadNum int     `json:"read_num"`
-	Hosts   []Hosts `json:"hosts"`
+	MaxProcs int     `json:"go_max_procs"`
+	ReadNum  int     `json:"read_count"`
+	Hosts    []Hosts `json:"hosts"`
 }
 
 type Hosts struct {

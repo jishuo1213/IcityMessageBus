@@ -2,14 +2,15 @@ package utils
 
 import (
 	"hash"
-	"crypto/sha256"
 	"encoding/json"
+	"encoding/hex"
+	"crypto/md5"
 )
 
 var h hash.Hash
 
 func init() {
-	h = sha256.New()
+	h = md5.New()
 }
 
 func EncodeObject(object interface{}) ([]byte, error) {
@@ -33,5 +34,5 @@ func DecodeObject(object interface{}, data []byte) (error) {
 func DigestMessage(msg []byte) (string, error) {
 	h.Reset()
 	digest := h.Sum(msg)
-	return string(digest), nil
+	return hex.EncodeToString(digest), nil
 }

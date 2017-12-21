@@ -22,23 +22,22 @@ func PutMessageIntoQueue(topic string, msg []byte) error {
 	if err != nil {
 		return err
 	}
-	if queue, found := queueMap[topic]; found {
-		goQueue = queue
-	} else {
-		cTopic := C.CString(topic)
-		defer C.free(unsafe.Pointer(cTopic))
-
-		goQueue = C.openQueue(cTopic)
-
-		if goQueue != nil {
-			queueMap[topic] = goQueue
-		} else {
-			return errors.New("open queue failed")
-		}
-	}
+	//if queue, found := queueMap[topic]; found {
+	//	goQueue = queue
+	//} else {
+	//	cTopic := C.CString(topic)
+	//	defer C.free(unsafe.Pointer(cTopic))
+	//
+	//	goQueue = C.openQueue(cTopic)
+	//
+	//	if goQueue != nil {
+	//		queueMap[topic] = goQueue
+	//	} else {
+	//		return errors.New("open queue failed")
+	//	}
+	//}
 
 	cMsg := (*C.char)(unsafe.Pointer(&msg[0]))
-
 	ret := C.putOneMessageToQueue(goQueue, cMsg, C.uint(len(msg)))
 
 	log.Print("put msg into queue ret =", ret)
@@ -65,6 +64,12 @@ func getQueue(topic string) (*C.char, error) {
 		}
 	}
 	return goQueue, nil
+}
+
+func GetQueue(topic string) error {
+	queue, err := getQueue(topic)
+	log.Print(queue)
+	return err
 }
 
 func ReadOneMessageFromQueue(topic string) ([]byte, error) {

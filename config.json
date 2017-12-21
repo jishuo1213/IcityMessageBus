@@ -1,5 +1,6 @@
 {
-  "read_count": 500,
+  "read_count": 4,
+  "go_max_procs":4,
   "hosts": [
     {
       "name": "userCenter",
