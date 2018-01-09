@@ -3,6 +3,7 @@ package model
 import (
 	"net/http"
 	"strings"
+	"log"
 )
 
 type RequestInfo struct {
@@ -17,6 +18,7 @@ func (requestInfo *RequestInfo) GenerateRequest() (*http.Request, error) {
 
 	var request *http.Request
 	var err error
+	log.Print("GenerateRequest:", requestInfo.Url)
 	if len(requestInfo.Body) > 0 {
 		request, err = http.NewRequest(requestInfo.Method, requestInfo.Url,
 			strings.NewReader(requestInfo.Body))

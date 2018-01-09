@@ -1,11 +1,10 @@
 {
   "read_count": 4,
-  "go_max_procs":4,
+  "go_max_procs": 4,
   "hosts": [
     {
-      "name": "userCenter",
-      "url": "",
-      "toUrl": "http://127.0.0.1:8099"
+      "fromUrl": "/icity/as/app/getYearBill",
+      "toHost": "http://127.0.0.1:7086/appServer/app/getYearBill"
     }
   ]
 }
