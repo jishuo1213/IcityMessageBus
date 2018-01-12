@@ -67,6 +67,7 @@ func (parser *RequestParser) ServeHTTP(w http.ResponseWriter, req *http.Request)
 		close(resChannel)
 	}()
 	if err == nil {
+		requester.NotifyQueueHasMessage()
 		res := <-resChannel
 		if res.Header != nil {
 			for key, value := range *res.Header {

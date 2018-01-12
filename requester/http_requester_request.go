@@ -12,9 +12,15 @@ import (
 	"time"
 )
 
+type readControl struct {
+	isQueueEmpty bool
+	readChan     chan int
+}
+
 var httpClient *http.Client
 var responseChannelMap map[string]chan<- *model.ResponseData
 var lock sync.RWMutex
+var readChanList []*readControl
 
 func init() {
 	httpClient = &http.Client{
@@ -31,9 +37,14 @@ type ICityRequestBean struct {
 
 func Start() {
 	log.Print("read go count:", config.Config.ReadNum)
+
+	readChanList = make([]*readControl, 0, config.Config.ReadNum)
 	for i := 0; i < config.Config.ReadNum; i++ {
 		ch := make(chan *ICityRequestBean)
-		go startReadMessageLoop(ch)
+		readChan := make(chan int)
+		control := readControl{false, readChan}
+		readChanList = append(readChanList, &control)
+		go startReadMessageLoop(ch, &control)
 		go dealChannel(ch)
 	}
 
@@ -90,16 +101,6 @@ func sendHttpRequest(request *http.Request) (int, *http.Header, []byte, error) {
 	}
 }
 
-func startReadMessageLoop(requestChannel chan<- *ICityRequestBean) {
-	for {
-		digest, request, err := getRequestFromQueue()
-		if err == nil {
-			log.Print("err == nil")
-			requestChannel <- &ICityRequestBean{digest, request}
-		}
-	}
-}
-
 func getRequestFromQueue() (string, *http.Request, error) {
 	msg, err := cmsp.ReadOneMessageFromQueue(config.REQUEST_QUEUE_NAME)
 
@@ -129,6 +130,23 @@ func getRequestFromQueue() (string, *http.Request, error) {
 	return msgDigest, realRequest, err
 }
 
+func startReadMessageLoop(requestChannel chan<- *ICityRequestBean, control *readControl) {
+	for {
+		//read := <-readChan
+		if control.isQueueEmpty {
+			<-control.readChan
+		}
+		digest, request, err := getRequestFromQueue()
+		if err == nil {
+			control.isQueueEmpty = false
+			log.Print("err == nil")
+			requestChannel <- &ICityRequestBean{digest, request}
+		} else {
+			control.isQueueEmpty = true
+		}
+	}
+}
+
 func AddResponseChannel(digest string, resChannel chan<- *model.ResponseData) {
 	lock.Lock()
 	responseChannelMap[digest] = resChannel
@@ -139,4 +157,12 @@ func RemoveResponseChannel(digest string) () {
 	lock.Lock()
 	delete(responseChannelMap, digest)
 	lock.Unlock()
+}
+
+func NotifyQueueHasMessage() {
+	for _, control := range readChanList {
+		if control.isQueueEmpty {
+			control.readChan <- 1
+		}
+	}
 }
